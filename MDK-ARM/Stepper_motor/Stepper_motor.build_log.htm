@@ -22,35 +22,35 @@ Dialog DLL:      TCM.DLL V1.36.2.0
  
 <h2>Project:</h2>
 D:\STM32F407\CubeMx project\Cafe machine - DWIN\MDK-ARM\Stepper_motor.uvprojx
-Project File Date:  08/04/2023
+Project File Date:  09/14/2023
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 6 (build 750)', folder: 'D:\KeilC v5\DATA\ARM\ARMCC\Bin'
 Build target 'Stepper_motor'
 compiling main.c...
-../Core/Src/main.c(270): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(345): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   	I_part = 0.5 * Ki * T_sample * (error + Pre_error);
-../Core/Src/main.c(271): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(346): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   	D_part = (Kd/T_sample)*(error - Pre_error);
-../Core/Src/main.c(290): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(365): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   	I_part_coi = 0.5 * Ki1 * T_sample * (error_coi + Pre_error_coi);
-../Core/Src/main.c(291): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(366): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   	D_part_coi = (Kd1/T_sample)*(error_coi - Pre_error_coi);
-../Core/Src/main.c(297): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(372): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   	if (Output_coi>=10000.0) Output_coi=9500;	
-../Core/Src/main.c(298): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(373): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   	if (Output_coi<0.0)  Output_coi=0;	
-../Core/Src/main.c(591): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(672): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   	P_bar = (Sum_P/size_filter)*10.0;
-../Core/Src/main.c(604): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(685): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   			Ntc_temp_coi = (1.0/(A + B*Ntc_Ln_coi + D*Ntc_Ln_coi*Ntc_Ln_coi*Ntc_Ln_coi)) - 273.5;
-../Core/Src/main.c(631): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(712): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   			Ntc_temp = (1.0/(A + B*Ntc_Ln + D*Ntc_Ln*Ntc_Ln*Ntc_Ln)) - 273.5;
-../Core/Src/main.c(1444): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+../Core/Src/main.c(1535): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   			Flow_final = Flow*100.668/200.0; // ml/s
 ../Core/Src/main.c: 10 warnings, 0 errors
 linking...
-Program Size: Code=26438 RO-data=658 RW-data=400 ZI-data=3256  
+Program Size: Code=26894 RO-data=658 RW-data=448 ZI-data=3256  
 FromELF: creating hex file...
 "Stepper_motor\Stepper_motor.axf" - 0 Error(s), 10 Warning(s).
 
@@ -75,7 +75,7 @@ Package Vendor: Keil
 <h2>Collection of Component Files used:</h2>
 
    * Component: ARM::CMSIS:CORE:5.5.0
-Build Time Elapsed:  00:00:03
+Build Time Elapsed:  00:00:04
 </pre>
 </body>
 </html>

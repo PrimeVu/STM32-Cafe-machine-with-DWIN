@@ -1,9 +1,9 @@
 --cpu=Cortex-M4.fp
 "stepper_motor\startup_stm32f407xx.o"
+"stepper_motor\flash_sector_f4.o"
 "stepper_motor\main.o"
 "stepper_motor\stm32f4xx_it.o"
 "stepper_motor\stm32f4xx_hal_msp.o"
-"stepper_motor\flash_sector_f4.o"
 "stepper_motor\stm32f4xx_hal_adc.o"
 "stepper_motor\stm32f4xx_hal_adc_ex.o"
 "stepper_motor\stm32f4xx_ll_adc.o"

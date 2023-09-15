@@ -79,7 +79,8 @@ DMA_HandleTypeDef hdma_uart5_tx;
 
 
 	/***** PWM MOTOR ****/
-	int PWM_step = 200;
+	int PWM_step = 100;
+	int PWM_step_slow = 50;
 	int PWM_bom = 380;
 	
 
@@ -132,8 +133,8 @@ DMA_HandleTypeDef hdma_uart5_tx;
 	/************** STEPPER MOTOR VAR *************/
 		//0.34s quay 1 vong
 		float count=0;
-		float x1=800*36, x2=800*55, x3=800*55.5, delta_x;
-		float x4 = 800*55.75, x5=800*90;
+		float x1=800*36, x2=800*55.75, x3=800*56.25, delta_x;
+		float x4 = 800*55.75, x5=800*85;
 		int count_tim1 = 0;
 		uint8_t atx1 = 0, atx2 = 0, atx3 =0, atx4=0, atx5=0, count_wash=0;
 	/*********************************************/
@@ -163,8 +164,17 @@ DMA_HandleTypeDef hdma_uart5_tx;
 		uint8_t ClearGraph_VarDisplay[]={0x5A, 0xA5, 0x05, 0x82, 0x50, 0x00, 0x00, 0x00,0x5A, 0xA5, 0x05, 0x82, 0x51, 0x00, 0x00, 0x00,
 																		0x5A, 0xA5, 0x05, 0x82, 0x52, 0x00, 0x00, 0x00,
 																		0x5A, 0xA5, 0x05, 0x82, 0x03, 0x01, 0x00, 0x00, 0x5A, 0xA5, 0x05, 0x82, 0x03, 0x07, 0x00, 0x00};
+		
+																		
+		uint8_t TxDataSend1[]={0x5A, 0xA5, 0x05, 0x82, 0x20, 0x00, 0x00, 0x00, 
+													 0x5A, 0xA5, 0x05, 0x82, 0x20, 0x02, 0x00, 0x00, 
+													 0x5A, 0xA5, 0x05, 0x82, 0x20, 0x04, 0x00, 0x00,
+													 0x5A, 0xA5, 0x05, 0x82, 0x20, 0x06, 0x00, 0x00};
+		
+		uint8_t BackToPage0Cmd[]={0x5A, 0xA5, 0x07, 0x82, 0x00, 0x84, 0x5A, 0x01, 0x00, 0x00};
+													 
 		int conTx=0;
-
+		uint8_t countSend1times=0;
 		volatile uint32_t count_DMA=0;
 		volatile uint32_t count_TX=0;
 
@@ -182,7 +192,7 @@ DMA_HandleTypeDef hdma_uart5_tx;
 																		
 		uint8_t Data_read_flash[10];
 		uint32_t FLASH_ADD = 0x08010000;
-		uint8_t xay, steam, water_boiler, water_vale;
+		uint8_t xay, steam, water, water_vale, run_test;
 	/**********************************************/
 	
 
@@ -208,6 +218,71 @@ static void MX_TIM6_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void TIM2_slow_F()
+{
+	  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 84-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 400-1;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+}
+
+void send_data_1time()
+{
+	TxDataSend1[7] = time_xay/100;
+	TxDataSend1[15] = time_u_cafe/100;
+	TxDataSend1[23] = time_xa_cafe/100;
+	TxDataSend1[31] = TEMP_setup;
+	HAL_UART_Transmit(&huart5, TxDataSend1, sizeof(TxDataSend1), 100);
+}
 void send_data()
 {
 	if(change_to_page==0)
@@ -318,7 +393,8 @@ void delay_timer11_ms(__IO uint32_t nCount)
 void VesinhMay()
 {
 		/************** MO VAN RUA *****************/
-		if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)!=0 && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3)==0 
+	HAL_TIM_Base_Stop(&htim2);
+		if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)!=0 && run_test==1/*HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3)==1*/ 
 			/*&& HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13)==0*/)
 		{
 			HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_1);
@@ -336,17 +412,17 @@ void VesinhMay()
 				count=x4;
 				
 				//Mo voi nuoc
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET);
 				//Mo van rua
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 				//Mo bom
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 				TIM2->CCR2=PWM_bom;
 				HAL_Delay(5000);
 				//Ngat voi nuoc
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET);
 				//Ngat van rua
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_RESET);
 				//Ngat bom
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 				TIM2->CCR2=0;
@@ -367,7 +443,7 @@ void VesinhMay()
 					count=x4;
 					atx4=0;
 					atx5=0;
-					HAL_Delay(2000);
+					HAL_Delay(1000);
 				}
 				while(count<x5)
 				{
@@ -382,17 +458,17 @@ void VesinhMay()
 					count=x4;
 					atx5=0;
 					//Ngat voi nuoc
-					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET);
 					//Ngat van rua
-					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);
 					//Ngat bom
 					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 					TIM2->CCR2=PWM_bom;
 					HAL_Delay(5000);
 					//Ngat voi nuoc
-					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET);
 					//Ngat van rua
-					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET);
 					//Ngat bom
 					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 					TIM2->CCR2=0;
@@ -409,7 +485,7 @@ void VesinhMay()
 					TIM2->CCR1=0;
 					count=x4;
 					atx5=0;
-					HAL_Delay(2000);
+					HAL_Delay(1000);
 				}
 				count_wash++;
 				if(count_wash<2)
@@ -426,17 +502,17 @@ void VesinhMay()
 						TIM2->CCR1=0;
 						count=x4;
 						//Mo voi nuoc
-						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);
+						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET);
 						//Mo van rua
-						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_SET);
+						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 						//Mo bom
 						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 						TIM2->CCR2=PWM_bom;
 						HAL_Delay(5000);
 						//Ngat voi nuoc
-						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
+						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET);
 						//Ngat van rua
-						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET);
+						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_RESET);
 						//Ngat bom
 						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 						TIM2->CCR2=0;
@@ -445,14 +521,14 @@ void VesinhMay()
 			}
 	
 				//Ngat van xa va bom
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET); // ngat voi nuoc
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET); //ngat van xa cafe
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET); //ngat van xa cafe
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET); // ngat voi nuoc
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET); //ngat van xa cafe
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_RESET); //ngat van xa cafe
 				HAL_Delay(200);
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET); //ngat bom
 				TIM2->CCR2=0;
 			count_wash=0;
-
+			run_test=0;
 	}
 }
 
@@ -461,6 +537,7 @@ void Pha_cafe()
 		/***Go back Home***/
 		while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)==0 && turn_off == 1 && turn_on == 0) 
 		{
+			//htim2.Init.Period = 200-1;
 			//HAL_TIM_Base_Start_IT(&htim2);
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
 			TIM2->CCR1=PWM_step;
@@ -496,11 +573,12 @@ void Pha_cafe()
 				TIM2->CCR1=0;
 				HAL_TIM_Base_Stop_IT(&htim2);
 				count=x1;
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET); //Xay cafe trong 25s
-				HAL_Delay(time_xay-500);
-				//delay_timer11_ms(time_xay);
-				HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, GPIO_PIN_SET); //Xay cafe 
+				HAL_Delay(time_xay);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, GPIO_PIN_RESET);
 			}
+			
+			HAL_Delay(1000);
 		
 			//ep cafe (vi tri x2)
 			while(count<x2)
@@ -515,8 +593,8 @@ void Pha_cafe()
 				TIM2->CCR1=0;
 				count=x2;
 			}
-			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);  
-			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); //bat van nuoc tu boiler
+			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET);  
+			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET); //bat van nuoc tu boiler
 
 			HAL_Delay(2000);
 			
@@ -531,15 +609,15 @@ void Pha_cafe()
 			{
 				TIM2->CCR1=0;
 				HAL_TIM_Base_Stop_IT(&htim2);
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET); //bat van xa cafe
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-				TIM2->CCR2=PWM_bom;
-				HAL_Delay(2000);
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-				TIM2->CCR2=0;
+//				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, GPIO_PIN_SET); //bat van xa cafe
+//				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+//				TIM2->CCR2=PWM_bom;
+//				HAL_Delay(2000);
+//				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+//				TIM2->CCR2=0;
 				
 				HAL_Delay(time_u_cafe); //thoi gian u cafe
-				
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, GPIO_PIN_SET); //bat van xa cafe
 				//bat bom
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 				for(int j = 0; j<=PWM_bom; j+=1)
@@ -556,12 +634,15 @@ void Pha_cafe()
 					HAL_Delay(10);
 				}
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-				HAL_Delay(1000);
+				HAL_Delay(2000);
 
-				//ngat roi chay ve home
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
-				
+				//ngat cac van roi chay ve home
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, GPIO_PIN_RESET);
+				HAL_Delay(3000);
+				HAL_UART_Transmit(&huart5, BackToPage0Cmd, sizeof(BackToPage0Cmd), 100);
+				change_to_page=0;
 				turn_off = 1;
 				turn_on = 0;
 				atx1=0;
@@ -648,45 +729,46 @@ void Debug()
 {
 	/****** Bat XAY ******/
 	if(xay==1)
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, GPIO_PIN_SET);
 	else if(xay==0)
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, GPIO_PIN_RESET);
 	
 	/*** Mo van Boiler kem nuoc ***/
-	if(water_boiler==1)
+	if(water==1)
 	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);
-		//HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-		//TIM2->CCR2 = PWM_bom;
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+		TIM2->CCR2 = PWM_bom;
 	}
-	else if(water_boiler==0)
+	else if(water==0)
 	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
-		//HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-		//TIM2->CCR2 = 0;
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+		TIM2->CCR2 = 0;
 	}
 	
 	/****** Mo van Boiler xa bot ap ******/
-	if(steam==1) HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
-	else if(steam==0)	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+	if(steam==1) HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);
+	else if(steam==0)	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET);
 
 	/*** Mo van rua co mo nuoc ***/
 	if(water_vale==1)
 	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 		TIM2->CCR2 = PWM_bom;
 	}
 	else if(water_vale==0)
 	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
 		TIM2->CCR2 = 0;
 	}
+	
 	
 }
 
@@ -697,6 +779,7 @@ void Debug()
   * @retval int
   */
 int main(void)
+
 {
   /* USER CODE BEGIN 1 */
 	
@@ -744,6 +827,7 @@ int main(void)
 	HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);
 	HAL_TIM_Base_Start_IT(&htim6);
 	//HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
+	HAL_TIM_Base_Stop(&htim2);
 	
 		//Doc Flash
 		FLASH_ADD = 0x08010000;
@@ -754,9 +838,9 @@ int main(void)
 			FLASH_ADD++;
 		}
 		TEMP_setup = Data_read_flash[0];
-		time_xay = Data_read_flash[1]*1000;
-		time_u_cafe = Data_read_flash[2]*1000;
-		time_xa_cafe = Data_read_flash[3]*1000;
+		time_xay = Data_read_flash[1]*100;
+		time_u_cafe = Data_read_flash[2]*100;
+		time_xa_cafe = Data_read_flash[3]*100;
 				
 		FLASH_ADD = 0x08010000;
 		HAL_FLASH_Lock();
@@ -774,7 +858,7 @@ int main(void)
 		Pha_cafe();
 		VesinhMay();
 		Debug();
-		/************** MO VAN XA BOT AP *************/
+	/************** MO VAN XA BOT AP *************/
 //		if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_2)==1 && HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)!=0)
 //		{
 //			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
@@ -786,9 +870,21 @@ int main(void)
 //		{
 //			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
 //			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
-////			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
-////			TIM2->CCR2=0;
+//			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+//			TIM2->CCR2=PWM_bom;
 //		}
+	
+//			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_SET);
+//			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET);
+//			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+//			TIM2->CCR2=PWM_bom;
+//			HAL_Delay(5000);
+//			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_3, GPIO_PIN_RESET);
+//			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET);
+//			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+//			TIM2->CCR2=0;
+//			HAL_Delay(5000);
+		
   }
 	
   /* USER CODE END 3 */
@@ -1012,6 +1108,7 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM2_Init 2 */
+
 
   /* USER CODE END TIM2_Init 2 */
   HAL_TIM_MspPostInit(&htim2);
@@ -1341,17 +1438,17 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-                          |GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1|GPIO_PIN_2, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1
+                          |GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PC13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  /*Configure GPIO pins : PC13 PC0 PC1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_0|GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -1362,10 +1459,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PC0 PC1 PC2 PC3
-                           PC4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-                          |GPIO_PIN_4;
+  /*Configure GPIO pins : PC2 PC3 PC4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -1384,14 +1479,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PD12 */
-  GPIO_InitStruct.Pin = GPIO_PIN_12;
+  /*Configure GPIO pins : PD12 PD0 PD1 PD3
+                           PD4 PD5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_3
+                          |GPIO_PIN_4|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1473,7 +1564,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 	
 	for(int i=0; i<=MainBuf_SIZE; i++)
 	{
-		/*if(MainBuf[i]==0x04 && MainBuf[i+1]==0x00)*/if(MainBuf[i]==0x04 && MainBuf[i+1]==0x5A) change_to_page=1;
+		if((MainBuf[i]==0x04 && MainBuf[i+1]==0x00) || (MainBuf[i]==0x04 && MainBuf[i+1]==0x5A) 
+			|| (MainBuf[i]==0x08 && MainBuf[i+1]==0x04)) change_to_page=1;
 		if((MainBuf[i]==0x11 && MainBuf[i+1]==0x06) || (MainBuf[i]==0x11 && MainBuf[i+1]==0x05))	
 		{
 			change_to_page=2;
@@ -1485,17 +1577,27 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 	
 	if(change_to_page==1)
 	{
+		if(countSend1times<1)
+		{
+			send_data_1time();
+			countSend1times=1;
+		}
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart5,MainBuf,MainBuf_SIZE);
 		for(int i=0; i<=MainBuf_SIZE; i++)
 		{
-			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x02)	change_to_page=0;
+			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x02)	
+			{
+				change_to_page=0;
+				countSend1times=0;
+			}
 			if(MainBuf[i]==0x20 && MainBuf[i+1]==0x06)	TEMP_setup=MainBuf[i+4];
 			if(MainBuf[i]==0x20 && MainBuf[i+1]==0x04)	Time_xa_cafe=MainBuf[i+4];
 			if(MainBuf[i]==0x20 && MainBuf[i+1]==0x02)	Time_u_cafe=MainBuf[i+4];
 			if(MainBuf[i]==0x06 && MainBuf[i+2]==0x20 && MainBuf[i+3]==0x00)	Time_xay_cafe=MainBuf[i+6];
 			
-			//if(MainBuf[i]==0x04 && MainBuf[i+2]==0x5B)
-			if(MainBuf[i]==0x04 && MainBuf[i+1]==0xA5)
+			
+			if((MainBuf[i]==0x04 && MainBuf[i+1]==0xA5) || (MainBuf[i]==0x04 && MainBuf[i+2]==0x5B) 
+				|| (MainBuf[i]==0x04 && MainBuf[i+2]==0x5D) || (MainBuf[i]==0x60 && MainBuf[i+1]==0x01))
 			{
 				//Setting Screen receive Data
 				if(TEMP_setup!=0)
@@ -1560,15 +1662,16 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 					FLASH_ADD++;
 				}
 				TEMP_setup = Data_read_flash[0];
-				time_xay = Data_read_flash[1]*1000;
-				time_u_cafe = Data_read_flash[2]*1000;
-				time_xa_cafe = Data_read_flash[3]*1000;
+				time_xay = Data_read_flash[1]*100;
+				time_u_cafe = Data_read_flash[2]*100;
+				time_xa_cafe = Data_read_flash[3]*100;
 				
 				FLASH_ADD = 0x08010000;
 				HAL_FLASH_Lock();
 
 			}
 		}
+		
 	}
 	
 	if(change_to_page==2)
@@ -1589,12 +1692,14 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x02)	change_to_page=0;
 			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x08)	xay=1;
 			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x0C) 	xay=0;
-			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x09)	water_boiler=1;
-			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x0D) 	water_boiler=0;
+			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x09)	water=1;
+			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x0D) 	water=0;
 			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x0A)	steam=1;
 			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x0E) 	steam=0;
 			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x0B)	water_vale=1;
 			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x0F) 	water_vale=0;
+			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x11) 	NVIC_SystemReset();
+			if(MainBuf[i]==0x11 && MainBuf[i+1]==0x03)	run_test=1;
 		}
 	}
 	
